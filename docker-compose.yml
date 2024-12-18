@@ -1,0 +1,52 @@
+networks:
+  snail-job-privatenet:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  snail-job-data:
+
+services:
+    mysql-local:
+        command:
+            --wait_timeout=31536000
+            --interactive_timeout=31536000
+            --max_connections=1000
+        image: mysql:9.1
+        container_name: mysql-server
+        networks:
+            - snail-job-privatenet
+        ports:
+            - "3306:3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: snail_job
+            MYSQL_USER: pig
+            MYSQL_PASSWORD: 123456
+        volumes:
+            - mysql-data:/var/lib/mysql-data
+            - ./init-db:/docker-entrypoint-initdb.d
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "$MYSQL_USER", "-p$MYSQL_PASSWORD"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    snail-job-local:
+        image: opensnail/snail-job:1.2.0
+        container_name: snail-job-server
+        environment:
+            - PARAMS=--spring.datasource.username=pig
+                --spring.datasource.password=123456
+                --spring.datasource.url=jdbc:mysql://mysql-local:3306/snail_job?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai
+                --spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+        ports:
+            - "8080:8080"  # 绑定Snail-Job服务的端口到宿主机
+            - "1788:1788"
+        depends_on:
+            mysql-local:
+                condition: service_healthy
+        networks:
+            - snail-job-privatenet
+        volumes:
+            - snail-job-data:/snailjob/server/data:rw
