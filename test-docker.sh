@@ -13,5 +13,6 @@ telnet 127.0.0.1 1788 &
 sleep 2
 
 echo "测试 mysql 3306"
+echo "Enter password: 123456"
+echo ""
 mysql -h 127.0.0.1 -P 3306 -u pig -p
-#Enter password: 123456
